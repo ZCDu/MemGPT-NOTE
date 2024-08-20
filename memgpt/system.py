@@ -118,12 +118,14 @@ def get_login_event(last_login="Never (first login)", include_location=False, lo
 def package_user_message(user_message, time=None, include_location=False, location_name="San Francisco, CA, USA", name=None):
     # Package the message with time and location
     formatted_time = time if time else get_local_time()
+    # NOTE: 用户的信息封装过程中会增加一个时间的信息
     packaged_message = {
         "type": "user_message",
         "message": user_message,
         "time": formatted_time,
     }
 
+    # NOTE: 好骚呀，用户的message还要加位置信息
     if include_location:
         packaged_message["location"] = location_name
 

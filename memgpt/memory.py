@@ -14,6 +14,7 @@ from memgpt.utils import count_tokens, extract_date_from_timestamp, get_local_ti
 # from llama_index.node_parser import SimpleNodeParser
 
 
+# NOTE: system prompt需要用到到信息在这个类里
 class CoreMemory(object):
     """Held in-context inside the system message
 
@@ -102,6 +103,7 @@ class CoreMemory(object):
             raise KeyError(f'No memory section named {field} (must be either "persona" or "human")')
 
 
+# NOTE: 可以发现，memgpt里历史信息的在prompt里的格式是很简单的
 def _format_summary_history(message_history: List[Message]):
     # TODO use existing prompt formatters for this (eg ChatML)
     return "\n".join([f"{m.role}: {m.text}" for m in message_history])
@@ -116,6 +118,7 @@ def summarize_messages(
     # we need the context_window
     context_window = agent_state.llm_config.context_window
 
+    # NOTE: 对对话信息进行摘要的提示词
     summary_prompt = SUMMARY_PROMPT_SYSTEM
     summary_input = _format_summary_history(message_sequence_to_summarize)
     summary_input_tkns = count_tokens(summary_input)

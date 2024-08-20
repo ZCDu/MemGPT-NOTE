@@ -425,6 +425,7 @@ def server(
             sys.exit(0)
 
 
+# NOTE: memgpt run就是从这里开始
 def run(
     persona: Annotated[Optional[str], typer.Option(help="Specify persona")] = None,
     agent: Annotated[Optional[str], typer.Option(help="Specify agent name")] = None,
@@ -477,6 +478,7 @@ def run(
             "Create a new config using defaults",
             "Cancel",
         ]
+        # NOTE: questionary其实就是一个input的高级封装，用户只能在给定的choices里选答案
         selection = questionary.select(
             f"To use MemGPT, you must either downgrade your MemGPT version (<= {VERSION_CUTOFF}), or regenerate your config. Would you like to proceed?",
             choices=choices,
@@ -514,6 +516,7 @@ def run(
             config = MemGPTConfig()
 
         else:
+            # NOTE: 可以选择多种不同的模型
             config_choices = {
                 "memgpt": "Use the free MemGPT endpoints",
                 "openai": "Use OpenAI (requires an OpenAI API key)",
@@ -550,6 +553,7 @@ def run(
 
     # read user id from config
     ms = MetadataStore(config)
+    # NOTE: 判断用户是否存在，不存在则创建用户
     user = create_default_user_or_exit(config, ms)
     human = human if human else config.human
     persona = persona if persona else config.persona
@@ -580,6 +584,7 @@ def run(
         # printd("Index path:", agent_config.save_agent_index_dir())
         # persistence_manager = LocalStateManager(agent_config).load() # TODO: implement load
         # TODO: load prior agent state
+        # NOTE: 从这里可以看出来，这个mempgt只能单用户使用
         if persona and persona != agent_state.persona:
             typer.secho(f"{CLI_WARNING_PREFIX}Overriding existing persona {agent_state.persona} with {persona}", fg=typer.colors.YELLOW)
             agent_state.persona = persona
@@ -626,7 +631,7 @@ def run(
         # create agent
         memgpt_agent = Agent(agent_state=agent_state, interface=interface())
 
-    else:  # create new agent
+    else:  # NOTE: create new agent
         # create new agent config: override defaults with args if provided
         typer.secho("\n🧬 Creating new agent...", fg=typer.colors.WHITE)
 
@@ -678,6 +683,7 @@ def run(
                 if preset_obj is None:
                     typer.secho("Couldn't find presets in database, please run `memgpt configure`", fg=typer.colors.RED)
                     sys.exit(1)
+            # NOTE: 不允许有没有角色的用户,也就是说，必须要有用户先，才能执行，离谱
             if human_obj is None:
                 typer.secho("Couldn't find human {human} in database, please run `memgpt add human`", fg=typer.colors.RED)
             if persona_obj is None:
@@ -711,6 +717,7 @@ def run(
     from memgpt.main import run_agent_loop
 
     print()  # extra space
+    # NOTE: 在创建完agent之后开始循环执行memgpt.main.run_agent_loop, 这里才是真正重要的内容
     run_agent_loop(
         memgpt_agent=memgpt_agent, config=config, first=first, ms=ms, no_verify=no_verify, stream=stream
     )  # TODO: add back no_verify

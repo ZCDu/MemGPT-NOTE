@@ -27,6 +27,7 @@ from memgpt.streaming_interface import AgentRefreshStreamingInterface
 
 # interface = interface()
 
+# NOTE: typer是FastAPI作者出品的, CLI构建工具
 app = typer.Typer(pretty_exceptions_enable=False)
 app.command(name="run")(run)
 app.command(name="version")(version)
@@ -57,6 +58,7 @@ def clear_line(console, strip_ui=False):
         sys.stdout.flush()
 
 
+# NOTE: 开会与LLM交互
 def run_agent_loop(
     memgpt_agent: agent.Agent, config: MemGPTConfig, first, ms: MetadataStore, no_verify=False, cfg=None, strip_ui=False, stream=False
 ):
@@ -76,6 +78,7 @@ def run_agent_loop(
     user_message = None
     USER_GOES_FIRST = first
 
+    # NOTE: 定制用户初次登入时候的展示信息
     if not USER_GOES_FIRST:
         console.input("[bold cyan]Hit enter to begin (will request first MemGPT message)[/bold cyan]\n")
         clear_line(console, strip_ui=strip_ui)
@@ -88,6 +91,7 @@ def run_agent_loop(
             # Ask for user input
             if not stream:
                 print()
+            # NOTE: 这个用于构建CLI交互的库可以学学,好家伙, questionary这个库支持TUI下多行输入呀
             user_input = questionary.text(
                 "Enter your message:",
                 multiline=multiline_input,
@@ -114,6 +118,7 @@ def run_agent_loop(
 
             # Handle CLI commands
             # Commands to not get passed as input to MemGPT
+            # NOTE: 原来内置的命令只是单纯地通过匹配实现的
             if user_input.startswith("/"):
                 # updated agent save functions
                 if user_input.lower() == "/exit":
@@ -185,6 +190,7 @@ def run_agent_loop(
                 elif user_input.lower() == "/memory":
                     print(f"\nDumping memory contents:\n")
                     print(f"{str(memgpt_agent.memory)}")
+                    # NOTE: 除了memory还有持久化存储层
                     print(f"{str(memgpt_agent.persistence_manager.archival_memory)}")
                     print(f"{str(memgpt_agent.persistence_manager.recall_memory)}")
                     continue
@@ -356,10 +362,12 @@ def run_agent_loop(
             else:
                 # If message did not begin with command prefix, pass inputs to MemGPT
                 # Handle user message and append to messages
+                # NOTE: 如果不是内置的命令则需要对user input进行一下封装
                 user_message = system.package_user_message(user_input)
 
         skip_next_user_input = False
 
+        # NOTE: 不是，skip_next_user_input=True的时候，会跳到这儿继续执行啊
         def process_agent_step(user_message, no_verify):
             new_messages, heartbeat_request, function_failed, token_warning, tokens_accumulated = memgpt_agent.step(
                 user_message,
@@ -368,6 +376,7 @@ def run_agent_loop(
                 stream=stream,
             )
 
+            # NOTE: 在出现对应的问题的时候，会设置skip_next_user_input=True
             skip_next_user_input = False
             if token_warning:
                 user_message = system.get_token_limit_warning()
@@ -394,6 +403,7 @@ def run_agent_loop(
                         with console.status("[bold cyan]Thinking...") as status:
                             new_messages, user_message, skip_next_user_input = process_agent_step(user_message, no_verify)
                     break
+            # NOTE: 居然还有键盘打断，无敌！！！
             except KeyboardInterrupt:
                 print("User interrupt occurred.")
                 retry = questionary.confirm("Retry agent.step()?").ask()

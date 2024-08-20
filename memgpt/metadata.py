@@ -297,6 +297,7 @@ class MetadataStore:
 
     def __init__(self, config: MemGPTConfig):
         # TODO: get DB URI or path
+        # NOTE: memgpt除了支持postgres还支持sqlite，这还是比较好的
         if config.metadata_storage_type == "postgres":
             # construct URI from enviornment variables
             self.uri = settings.pg_uri if settings.pg_uri else config.metadata_storage_uri

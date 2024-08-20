@@ -68,6 +68,7 @@ def core_memory_append(self: Agent, name: str, content: str) -> Optional[str]:
     return None
 
 
+# PERF: 用户画像和角色卡的更新函数
 def core_memory_replace(self: Agent, name: str, old_content: str, new_content: str) -> Optional[str]:
     """
     Replace the contents of core memory. To delete memories, use an empty string for new_content.

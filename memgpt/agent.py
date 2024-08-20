@@ -99,11 +99,13 @@ def link_functions(function_schemas: list):
     return linked_function_set
 
 
+# NOTE: 角色卡和用户画像的统一存储
 def initialize_memory(ai_notes: Union[str, None], human_notes: Union[str, None]):
     if ai_notes is None:
         raise ValueError(ai_notes)
     if human_notes is None:
         raise ValueError(human_notes)
+    # NOTE:限制了用户画像和角色卡的长度
     memory = InContextMemory(human_char_limit=CORE_MEMORY_HUMAN_CHAR_LIMIT, persona_char_limit=CORE_MEMORY_PERSONA_CHAR_LIMIT)
     memory.edit_persona(ai_notes)
     memory.edit_human(human_notes)
@@ -118,6 +120,7 @@ def construct_system_with_memory(
     recall_memory: Optional[RecallMemory] = None,
     include_char_count: bool = True,
 ):
+    # PERF: MemGPT的prompt!这里怎么用的json格式呀，真难受呀
     full_system_message = "\n".join(
         [
             system,
@@ -146,14 +149,18 @@ def initialize_message_sequence(
     memory_edit_timestamp: Optional[str] = None,
     include_initial_boot_message: bool = True,
 ) -> List[dict]:
+    # NOTE: prompt会有当前的时间
     if memory_edit_timestamp is None:
         memory_edit_timestamp = get_local_time()
 
+    # NOTE: 构建system prompt
     full_system_message = construct_system_with_memory(
         system, memory, memory_edit_timestamp, archival_memory=archival_memory, recall_memory=recall_memory
     )
+    # NOTE: 用于记录用户登入状态的
     first_user_message = get_login_event()  # event letting MemGPT know the user just logged in
 
+    # NOTE: 好家伙, 还设置了不同时刻登入时的prompt如何表现
     if include_initial_boot_message:
         if model is not None and "gpt-3.5" in model:
             initial_boot_messages = get_initial_boot_messages("startup_with_send_message_gpt35")
@@ -170,6 +177,7 @@ def initialize_message_sequence(
         )
 
     else:
+        # NOTE: 正常的对话形式，没有initial_boot_messages设置的prompt形式就很常规
         messages = [
             {"role": "system", "content": full_system_message},
             {"role": "user", "content": first_user_message},
@@ -194,6 +202,7 @@ class Agent(object):
         messages_total: Optional[int] = None,  # TODO remove?
         first_message_verify_mono: bool = True,  # TODO move to config?
     ):
+        # NOTE: 两种初始化Agent的方式，第一种从预设配置读取，一种从专门的Agent配置读取
         # An agent can be created from a Preset object
         if preset is not None:
             assert agent_state is None, "Can create an agent from a Preset or AgentState (but both were provided)"
@@ -245,6 +254,7 @@ class Agent(object):
             raise ValueError(f"'functions' not found in provided AgentState")
         # Store the functions schemas (this is passed as an argument to ChatCompletion)
         self.functions = self.agent_state.state["functions"]  # these are the schema
+        # PERF: 这个实现function calling到function的映射是真不错
         # Link the actual python functions corresponding to the schemas
         self.functions_python = {k: v["python_function"] for k, v in link_functions(function_schemas=self.functions).items()}
         assert all([callable(f) for k, f in self.functions_python.items()]), self.functions_python
@@ -254,6 +264,7 @@ class Agent(object):
             raise ValueError(f"'persona' not found in provided AgentState")
         if "human" not in self.agent_state.state:
             raise ValueError(f"'human' not found in provided AgentState")
+        # NOTE: 从记忆设置这儿可以看出来应该是有2个相关的记忆库的，一个ai 一个human
         self.memory = initialize_memory(ai_notes=self.agent_state.state["persona"], human_notes=self.agent_state.state["human"])
 
         # Interface must implement:
@@ -305,6 +316,7 @@ class Agent(object):
 
         else:
             # print(f"Agent.__init__ :: creating, state={agent_state.state['messages']}")
+            # NOTE: 用户初次登入时候的prompt配置，之后直接在内存中读了就用上面的方式了
             init_messages = initialize_message_sequence(
                 self.model,
                 self.system,
@@ -612,6 +624,7 @@ class Agent(object):
             self.interface.function_message(f"Ran {function_name}({function_args})", msg_obj=messages[-1])
             self.interface.function_message(f"Success: {function_response_string}", msg_obj=messages[-1])
 
+        # NOTE: 当大模型判断不需要进行Tool处理的时候
         else:
             # Standard non-function reply
             messages.append(
@@ -666,6 +679,7 @@ class Agent(object):
                     raise e
 
         try:
+            # NOTE: MemGPT Agent执行流程
             # Step 0: add user message
             if user_message is not None:
                 if isinstance(user_message, Message):
@@ -716,6 +730,7 @@ class Agent(object):
                 printd(f"This is the first message. Running extra verifier on AI response.")
                 counter = 0
                 while True:
+                    # NOTE: 调用大模型进行回复
                     response = self._get_ai_reply(
                         message_sequence=input_message_sequence,
                         first_message=True,  # passed through to the prompt formatter
@@ -765,6 +780,7 @@ class Agent(object):
             current_total_tokens = response.usage.total_tokens
             active_memory_warning = False
             # We can't do summarize logic properly if context_window is undefined
+            # NOTE: 当整体的对话数量小于预设的窗口时，不需要进行summary
             if self.agent_state.llm_config.context_window is None:
                 # Fallback if for some reason context_window is missing, just set to the default
                 print(f"{CLI_WARNING_PREFIX}could not find context_window in config, setting to default {LLM_MAX_TOKENS['DEFAULT']}")
@@ -793,6 +809,7 @@ class Agent(object):
             printd(f"step() failed\nuser_message = {user_message}\nerror = {e}")
 
             # If we got a context alert, try trimming the messages length, then try again
+            # NOTE: 当input长度过长的时候，进行总结, 总结完之后再次调用step
             if is_context_overflow_error(e):
                 # A separate API call to run a summarizer
                 self.summarize_messages_inplace()
@@ -811,6 +828,7 @@ class Agent(object):
         # Do not allow truncation of the last N messages, since these are needed for in-context examples of function calling
         token_counts = [count_tokens(str(msg)) for msg in self.messages]
         message_buffer_token_count = sum(token_counts[1:])  # no system message
+        # NOTE: 定义了进行summarize时候的输出长度
         desired_token_count_to_summarize = int(message_buffer_token_count * MESSAGE_SUMMARY_TRUNC_TOKEN_FRAC)
         candidate_messages_to_summarize = self.messages[1:]
         token_counts = token_counts[1:]
@@ -916,6 +934,7 @@ class Agent(object):
 
         printd(f"Ran summarizer, messages length {prior_len} -> {len(self.messages)}")
 
+    # NOTE: 好家伙！心跳验证
     def heartbeat_is_paused(self):
         """Check if there's a requested pause on timed heartbeats"""
 
