@@ -58,7 +58,7 @@ def clear_line(console, strip_ui=False):
         sys.stdout.flush()
 
 
-# NOTE: 开会与LLM交互
+# NOTE: 开始与LLM交互
 def run_agent_loop(
     memgpt_agent: agent.Agent, config: MemGPTConfig, first, ms: MetadataStore, no_verify=False, cfg=None, strip_ui=False, stream=False
 ):

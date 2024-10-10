@@ -121,6 +121,7 @@ def construct_system_with_memory(
     include_char_count: bool = True,
 ):
     # PERF: MemGPT的prompt!这里怎么用的json格式呀，真难受呀
+    # NOTE: system基本来自于prompts.system，明确要求AI要以符合设定的persona表现
     full_system_message = "\n".join(
         [
             system,
@@ -185,7 +186,8 @@ def initialize_message_sequence(
 
     return messages
 
-
+# NOTE: preset非空会用上preset的信息来进行Agent的初始化，基础的preset示例: presets文件里
+# preset指定了system prompt和functions
 class Agent(object):
     def __init__(
         self,
@@ -423,6 +425,7 @@ class Agent(object):
     ) -> chat_completion_response.ChatCompletionResponse:
         """Get response from LLM API"""
         try:
+            # NOTE: MemGPT自己封装了一个LLM的调用入口，这里也需要进行function的绑定
             response = create(
                 agent_state=self.agent_state,
                 messages=message_sequence,
@@ -679,7 +682,7 @@ class Agent(object):
                     raise e
 
         try:
-            # NOTE: MemGPT Agent执行流程
+            # PERF: MemGPT Agent执行流程
             # Step 0: add user message
             if user_message is not None:
                 if isinstance(user_message, Message):

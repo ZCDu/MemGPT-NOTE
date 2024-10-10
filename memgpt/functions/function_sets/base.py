@@ -82,6 +82,7 @@ def core_memory_replace(self: Agent, name: str, old_content: str, new_content: s
         Optional[str]: None is always returned as this function does not produce a response.
     """
     self.memory.edit_replace(name, old_content, new_content)
+    # NOTE: 由于MemGPT是直接将prompt缓存起来的，所以需要重新加载prompt
     self.rebuild_memory()
     return None
 

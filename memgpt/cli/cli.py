@@ -555,6 +555,7 @@ def run(
     ms = MetadataStore(config)
     # NOTE: 判断用户是否存在，不存在则创建用户
     user = create_default_user_or_exit(config, ms)
+    # NOTE: 用户画像和AI角色卡的来源设置
     human = human if human else config.human
     persona = persona if persona else config.persona
 

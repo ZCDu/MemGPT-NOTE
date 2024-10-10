@@ -55,6 +55,7 @@ class CoreMemory(object):
         self.persona = new_persona
         return len(self.persona)
 
+    # NOTE: edit_human主要是做了一个长度的判断，然后将new_human赋值给Agent的human
     def edit_human(self, new_human):
         if self.human_char_limit and len(new_human) > self.human_char_limit:
             error_msg = f"Edit failed: Exceeds {self.human_char_limit} character limit (requested {len(new_human)})."
